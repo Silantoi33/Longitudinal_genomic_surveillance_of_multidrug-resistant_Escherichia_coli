@@ -2,24 +2,36 @@ import gzip
 
 def split_paired_fastq(input_file, output_prefix, batch_size):
     with open(input_file, 'r') as f:
-        r1_output_file = gzip.open(f"{output_prefix}_R1.fastq.gz", 'wt')
-        r2_output_file = gzip.open(f"{output_prefix}_R2.fastq.gz", 'wt')
-        r1_count = 0
-        r2_count = 0
+        current_batch = 0
+        r1_output_file = None
+        r2_output_file = None
+        r1_batch_count = 0
+        r2_batch_count = 0
 
         for line in f:
-            if r1_count < batch_size and r2_count < batch_size:
-                if line.startswith("@"):
-                    if "/1" in line:
-                        r1_count += 1
-                        output_file = r1_output_file
-                    elif "/2" in line:
-                        r2_count += 1
-                        output_file = r2_output_file
-                output_file.write(line)
+            if r1_batch_count == 0:
+                current_batch += 1
+                r1_output_file = gzip.open(f"{output_prefix}_R1_{current_batch}.fastq.gz", 'wt')
+                r2_output_file = gzip.open(f"{output_prefix}_R2_{current_batch}.fastq.gz", 'wt')
 
-        r1_output_file.close()
-        r2_output_file.close()
+            if r1_batch_count < 4 * batch_size:
+                r1_output_file.write(line)
+                r1_batch_count += 1
+            else:
+                r2_output_file.write(line)
+                r2_batch_count += 1
+
+            if r1_batch_count == 4 * batch_size:
+                r1_output_file.close()
+                r1_batch_count = 0
+            elif r2_batch_count == 4 * batch_size:
+                r2_output_file.close()
+                r2_batch_count = 0
+
+        if r1_output_file:
+            r1_output_file.close()
+        if r2_output_file:
+            r2_output_file.close()
 
 # Example usage:
-split_paired_fastq("/home/sequser/SILANTOI/miniproject/ecoli-project/ERR718783.fastq", "/home/sequser/SILANTOI/miniproject/ecoli-project/ERR718783", 10000)
+split_paired_fastq("/home/sequser/SILANTOI/miniproject/ecoli-project/ASSEMBLED/ERR718783.fastq", "/home/sequser/SILANTOI/miniproject/ecoli-project/ASSEMBLED/ERR718783", 10000)
